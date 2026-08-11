@@ -641,7 +641,7 @@ function renderCartDrawerHtml() {
           </div>
           <div class="cart-footer-actions">
             <a href="#/billing" class="btn btn-primary" onclick="closeCart()" style="width:100%;text-align:center;">
-              ${t('proceedToBilling')}
+              ${t('placeOrder')}
             </a>
             <button class="cart-clear-btn" onclick="clearCart()">${t('clearCart')}</button>
           </div>
@@ -766,44 +766,16 @@ function renderBillingPage() {
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="billing-mobile">${t('mobileNumber')} <span style="color:var(--terracotta)">*</span></label>
-            <input type="tel" class="form-input" id="billing-mobile" required placeholder="${t('mobilePlaceholder')}" pattern="[0-9]{10}" autocomplete="tel" />
-            <div class="form-error" id="mobile-error" style="display:none">${t('invalidMobile')}</div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="billing-email">${t('email')} <span class="optional-tag">(${t('optional')})</span></label>
-            <input type="email" class="form-input" id="billing-email" placeholder="${t('emailPlaceholder')}" autocomplete="email" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="billing-address">${t('address')} <span style="color:var(--terracotta)">*</span></label>
-            <textarea class="form-textarea" id="billing-address" required placeholder="${t('addressPlaceholder')}" autocomplete="street-address"></textarea>
-          </div>
-
-          <div class="form-group">
             <label class="form-label" for="billing-instructions">${t('specialInstructions')} <span class="optional-tag">(${t('optional')})</span></label>
             <textarea class="form-textarea" id="billing-instructions" placeholder="${t('instructionsPlaceholder')}" rows="2"></textarea>
           </div>
         </div>
 
-        <!-- Payment Method -->
         <div class="billing-form-section">
-          <h2 class="${currentLang === 'hi' ? 'font-serif-hi' : 'font-serif-en'}">${t('paymentMethod')}</h2>
-          <div class="payment-options">
-            <div class="payment-option selected" onclick="selectPayment(this, 'cash')">
-              <input type="radio" name="payment" value="cash" checked id="pay-cash" />
-              <label for="pay-cash">💵 ${t('cash')}</label>
-            </div>
-            <div class="payment-option" onclick="selectPayment(this, 'upi')">
-              <input type="radio" name="payment" value="upi" id="pay-upi" />
-              <label for="pay-upi">📱 ${t('upi')}</label>
-            </div>
-            <div class="payment-option" onclick="selectPayment(this, 'pod')">
-              <input type="radio" name="payment" value="pod" id="pay-pod" />
-              <label for="pay-pod">🚚 ${t('payOnDelivery')}</label>
-            </div>
-          </div>
+          <p class="billing-note" style="margin-bottom:var(--space-md);line-height:1.7;">${currentLang === 'hi'
+            ? 'ऑर्डर भेजने के लिए कृपया जानकारी भरें। पूरा विवरण व्हाट्सएप पर स्वत: खुल जाएगा।'
+            : 'Fill in your details and your order will be prepared to send directly via WhatsApp.'
+          }</p>
         </div>
 
         <div class="billing-submit">
@@ -816,32 +788,12 @@ function renderBillingPage() {
   `;
 }
 
-function selectPayment(el, value) {
-  document.querySelectorAll('.payment-option').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-  el.querySelector('input').checked = true;
-}
-
 function handlePlaceOrder(e) {
   e.preventDefault();
   const name = document.getElementById('billing-name').value.trim();
-  const mobile = document.getElementById('billing-mobile').value.trim();
-  const address = document.getElementById('billing-address').value.trim();
-  const email = document.getElementById('billing-email').value.trim();
   const instructions = document.getElementById('billing-instructions').value.trim();
-  const payment = document.querySelector('input[name="payment"]:checked')?.value || 'cash';
 
-  // Validate mobile
-  if (!/^\d{10}$/.test(mobile)) {
-    const mobileInput = document.getElementById('billing-mobile');
-    const mobileError = document.getElementById('mobile-error');
-    mobileInput.classList.add('error');
-    if (mobileError) mobileError.style.display = 'block';
-    mobileInput.focus();
-    return;
-  }
-
-  if (!name || !address) {
+  if (!name) {
     alert(t('fillRequired'));
     return;
   }
@@ -849,27 +801,41 @@ function handlePlaceOrder(e) {
   // Generate order ID
   const orderId = 'SSFS-' + Date.now().toString(36).toUpperCase();
 
-  lastOrderData = {
-    orderId,
-    name,
-    mobile,
-    email,
-    address,
-    instructions,
-    payment,
-    items: cart.map(ci => {
-      const item = findItem(ci.id);
-      return { name: itemName(item), qty: ci.qty, price: item.price, subtotal: item.price * ci.qty };
-    }),
-    total: getCartTotal(),
-  };
+  const orderItems = cart.map(ci => {
+    const item = findItem(ci.id);
+    return item ? { name: itemName(item), qty: ci.qty, price: item.price, subtotal: item.price * ci.qty } : null;
+  }).filter(Boolean);
 
-  // Clear cart
+  if (orderItems.length === 0) {
+    alert(currentLang === 'hi' ? 'कृपया पहले कुछ जोड़ें।' : 'Please add items before placing an order.');
+    return;
+  }
+
+  const total = getCartTotal();
+  const itemLines = orderItems.map(item => `• ${item.name} × ${item.qty} = ₹${item.subtotal}`).join('\n');
+  const instructionLine = instructions ? `${currentLang === 'hi' ? 'विशेष निर्देश' : 'Special Instructions'}: ${instructions}` : '';
+
+  const messageLines = [
+    currentLang === 'hi' ? 'नमस्ते Shambhu Serenity Food Service,' : 'Hello Shambhu Serenity Food Service,',
+    currentLang === 'hi' ? 'मैं यह ऑर्डर देना चाहता/चाहती हूँ:' : 'I would like to place this order:',
+    '',
+    `${currentLang === 'hi' ? 'ग्राहक का नाम' : 'Customer Name'}: ${name}`,
+  ];
+
+  if (instructionLine) {
+    messageLines.push(instructionLine);
+  }
+
+  messageLines.push('', `${currentLang === 'hi' ? 'ऑर्डर विवरण' : 'Order Details'}:`, itemLines, '', `${currentLang === 'hi' ? 'कुल' : 'Total'}: ₹${total}`);
+
+  const whatsappNumber = AppData.brand.whatsapp.replace(/\D/g, '');
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(messageLines.join('\n'))}`;
+
   cart = [];
   saveCart();
+  renderApp();
 
-  // Navigate to confirmation
-  window.location.hash = '#/confirmation';
+  window.open(whatsappUrl, '_blank');
 }
 
 // ─── Page: Order Confirmation ──────────────────────────────────
@@ -961,8 +927,6 @@ function getPageContent() {
   const hash = window.location.hash || '#/';
   if (hash === '#/billing') {
     return renderBillingPage();
-  } else if (hash === '#/confirmation') {
-    return renderConfirmationPage();
   } else {
     return renderHomePage();
   }
