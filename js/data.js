@@ -154,7 +154,7 @@ const AppData = {
     mobileNumber:       { hi: 'मोबाइल नंबर',           en: 'Mobile Number' },
     email:              { hi: 'ईमेल (वैकल्पिक)',       en: 'Email (Optional)' },
     address:            { hi: 'पता',                   en: 'Address' },
-    specialInstructions:{ hi: 'विशेष निर्देश (वैकल्पिक)', en: 'Special Instructions (Optional)' },
+    specialInstructions:{ hi: 'विशेष निर्देश', en: 'Special Instructions' },
     namePlaceholder:    { hi: 'अपना नाम लिखें',        en: 'Enter your name' },
     mobilePlaceholder:  { hi: 'मोबाइल नंबर',           en: 'Mobile number' },
     emailPlaceholder:   { hi: 'ईमेल',                  en: 'Email' },
